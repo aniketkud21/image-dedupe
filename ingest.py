@@ -5,7 +5,8 @@ from sentence_transformers import SentenceTransformer
 from qdrant_client import QdrantClient
 from qdrant_client.models import PointStruct, VectorParams, Distance
 
-IMAGE_FOLDER = "dummy_post_images"
+DATASET_ROOT = "human_faces_dataset"
+SUBFOLDERS = ["men", "women"]
 COLLECTION_NAME = "image_posts"
 
 # Qdrant Setup
@@ -35,32 +36,46 @@ model = SentenceTransformer('clip-ViT-B-32')
 
 # Process Images
 points = []
-print(f"Indexing images from {IMAGE_FOLDER}...")
-
 idx = 0
-for filename in os.listdir(IMAGE_FOLDER):
-    if filename.lower().endswith((".jpg", ".png", ".jpeg", ".webp")):
-        path = os.path.join(IMAGE_FOLDER, filename)
-        
-        try:
-            # Convert image to vector
-            image = Image.open(path)
-            vector = model.encode(image).tolist()
+print(f"Indexing images from {DATASET_ROOT}...")
+
+for gender_folder in SUBFOLDERS:
+    folder_path = os.path.join(DATASET_ROOT, gender_folder)
+    
+    # Determine gender string for payload
+    gender_label = "Male" if gender_folder == "men" else "Female"
+
+    if not os.path.exists(folder_path):
+        print(f"Warning: Folder not found: {folder_path}")
+        continue
+
+    for filename in os.listdir(folder_path):
+        if filename.lower().endswith((".jpg", ".png", ".jpeg", ".webp")):
+            image_path = os.path.join(folder_path, filename)
             
-            # Create a Point
-            point = PointStruct(
-                id=idx,
-                vector=vector,
-                payload={
-                    "filename": filename,
-                    "product_name": f"Item: {filename}"
-                }
-            )
-            points.append(point)
-            idx += 1
-            print(f"Processed {filename}")
-        except Exception as e:
-            print(f"Skipping {filename}: {e}")
+            try:
+                # Convert image to vector
+                image = Image.open(image_path)
+                vector = model.encode(image).tolist()
+                #
+                #vector = model.encode(image).tolist()
+                
+                # Create Point 
+                point = PointStruct(
+                    id=idx,
+                    vector=vector,
+                    payload={
+                        "filename": filename,
+                        "gender": gender_label,
+                        "path": image_path
+                    }
+                )
+                points.append(point)
+                idx += 1
+                print(f"Processed ({gender_label}): {filename}")
+                
+            except Exception as e:
+                print(f"Skipping {filename}: {e}")
 
 # Upload to Cloud
 if points:
