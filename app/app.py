@@ -33,7 +33,7 @@ def home():
 
 @app.post("/search")
 async def search_products(file: UploadFile = File(...)):
-    if not file.content_type.startswith('image/'):
+    if file.content_type is None or not file.content_type.startswith('image/'):
         raise HTTPException(status_code=400, detail="File must be an image")
 
     try:
@@ -62,7 +62,7 @@ async def search_products(file: UploadFile = File(...)):
             relative_path = original_path.replace("human_faces_dataset/", "")
             
             # Create full URL
-            image_url = f"http://127.0.0.1:8000/static/{relative_path}"
+            image_url = f"http://127.0.0.1:8001/static/{relative_path}"
             
             results.append({
                 "filename": hit.payload.get("filename"),
